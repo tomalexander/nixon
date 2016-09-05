@@ -4,6 +4,8 @@ use hyper::header::Authorization;
 use std::io::Read;
 use std::collections::BTreeMap;
 use rustc_serialize::json;
+use rustc_serialize::json::Json;
+use time;
 
 use db;
 
@@ -23,6 +25,24 @@ pub struct RoomItem {
     pub name: String,
     pub privacy: String,
     pub version: String,
+}
+
+#[derive(RustcDecodable)]
+pub struct ChatResponse {
+    items: Vec<ChatMessage>,
+    links: BTreeMap<String, String>,
+    maxResults: u32,
+    startIndex: u32,
+}
+
+#[derive(RustcDecodable)]
+pub struct ChatMessage {
+    color: Option<String>,
+    date: i64,
+    // from: Json,
+    id: String,
+    message: String,
+    message_format: String,
 }
 
 pub fn get_rooms() -> Vec<RoomItem> {
@@ -60,4 +80,34 @@ pub fn get_rooms() -> Vec<RoomItem> {
         }
     }
     ret
+}
+
+pub fn get_messages_for_room(id: i32) {
+    let api_key: String = db::get_db_property("api_key").expect("DB Missing api_key");
+    let server:  String = db::get_db_property("server").expect("DB Missing server");
+    let auth = format!("Bearer {}", api_key);
+    let client = Client::new();
+
+    let mut url = hyper::Url::parse(&format!("https://{}/v2/room/{}/history", server, id)).unwrap();
+    let now = time::get_time();
+
+    url.query_pairs_mut()
+        .clear()
+        .append_pair("reverse", "true")
+        .append_pair("timezone", "UTC")
+        .append_pair("date", &now.sec.to_string())
+        ;
+    
+    let mut room_address: String = url.as_str().to_owned();
+    loop {
+        let mut res = client.get(&room_address)
+            .header(Authorization(auth.clone()))
+            .send().unwrap();
+        assert_eq!(res.status, hyper::Ok);
+        let mut content = String::new();
+        let size_read = res.read_to_string(&mut content);
+        println!("{}", content);
+
+        break;
+    }
 }
