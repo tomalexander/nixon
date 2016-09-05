@@ -1,0 +1,6 @@
+[package]
+name = "stasi"
+version = "0.1.0"
+authors = ["Tom Alexander <craftkiller@gmail.com>"]
+
+[dependencies]
