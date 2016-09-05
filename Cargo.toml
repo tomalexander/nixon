@@ -1,6 +1,9 @@
 [package]
+authors = ["Tom Alexander <craftkiller@gmail.com>"]
 name = "stasi"
 version = "0.1.0"
-authors = ["Tom Alexander <craftkiller@gmail.com>"]
 
 [dependencies]
+hyper = "0.9.10"
+rusqlite = "0.7.3"
+rustc-serialize = "0.3.19"

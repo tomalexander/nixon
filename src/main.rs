@@ -1,3 +1,10 @@
+extern crate hyper;
+extern crate rusqlite;
+extern crate rustc_serialize;
+
+pub mod db;
+pub mod hipchat;
+
 fn main() {
-    println!("Hello, world!");
+    hipchat::get_rooms();
 }
