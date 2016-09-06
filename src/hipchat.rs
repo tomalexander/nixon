@@ -108,16 +108,12 @@ pub fn get_messages_for_room(id: i32) {
     let now = time::get_time();
     let now_string: String = unix_to_8061(now.sec);
     
-    // let most_recent_message: i64 = db::get_most_recent_timestamp_for_room(&conn, id);
-    // println!("Most recent {}", most_recent_message);
-    // return;
-
     url.query_pairs_mut()
         .clear()
         .append_pair("reverse", "false")
         .append_pair("timezone", "UTC")
         .append_pair("date", &now_string)
-        .append_pair("max-results", "500")
+        .append_pair("max-results", "500") // For some reason, 1000 breaks paging
         ;
     
     let mut room_address: String = url.as_str().to_owned();
@@ -150,7 +146,6 @@ pub fn get_messages_for_room(id: i32) {
         let size_read = res.read_to_string(&mut content);
 
         let decoded: ChatResponse = serde_json::from_str(&content).unwrap();
-        // println!("{}", content);
 
         for msg in decoded.items {
             if db::add_message(&tx, &msg, id) {
