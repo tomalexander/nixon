@@ -3,13 +3,12 @@ use hyper::client::Client;
 use hyper::header::Authorization;
 use std::io::Read;
 use std::collections::BTreeMap;
-use rustc_serialize::json;
-use rustc_serialize::json::Json;
 use time;
+use serde_json;
 
 use db;
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 pub struct RoomResponse {
     items: Vec<RoomItem>,
     links: BTreeMap<String, String>,
@@ -17,7 +16,7 @@ pub struct RoomResponse {
     startIndex: u32,
 }
 
-#[derive(RustcDecodable, Clone)]
+#[derive(Deserialize, Clone)]
 pub struct RoomItem {
     pub id: i32,
     pub is_archived: bool,
@@ -27,7 +26,7 @@ pub struct RoomItem {
     pub version: String,
 }
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 pub struct ChatResponse {
     items: Vec<ChatMessage>,
     links: BTreeMap<String, String>,
@@ -35,14 +34,14 @@ pub struct ChatResponse {
     startIndex: u32,
 }
 
-#[derive(RustcDecodable)]
+#[derive(Deserialize)]
 pub struct ChatMessage {
     color: Option<String>,
-    date: i64,
-    // from: Json,
+    date: String,
+    from: serde_json::Value,
     id: String,
     message: String,
-    message_format: String,
+    message_format: Option<String>,
 }
 
 pub fn get_rooms() -> Vec<RoomItem> {
@@ -67,7 +66,7 @@ pub fn get_rooms() -> Vec<RoomItem> {
         assert_eq!(res.status, hyper::Ok);
         let mut content = String::new();
         let size_read = res.read_to_string(&mut content);
-        let decoded: RoomResponse = json::decode(&content).unwrap();
+        let decoded: RoomResponse = serde_json::from_str(&content).unwrap();
 
         ret.extend(decoded.items.iter().cloned());
         
@@ -106,8 +105,16 @@ pub fn get_messages_for_room(id: i32) {
         assert_eq!(res.status, hyper::Ok);
         let mut content = String::new();
         let size_read = res.read_to_string(&mut content);
-        println!("{}", content);
 
+        let decoded: ChatResponse = serde_json::from_str(&content).unwrap();
+
+        let next: Option<&String> = decoded.links.get("next");
+        if next.is_none() {
+            break;
+        } else {
+            room_address = next.unwrap().to_owned();
+            println!("Advancing to {}", room_address);
+        }
         break;
     }
 }

@@ -1,7 +1,11 @@
+#![feature(custom_derive, plugin)]
+#![plugin(serde_macros)]
+
 extern crate hyper;
 extern crate rusqlite;
-extern crate rustc_serialize;
 extern crate time;
+extern crate serde;
+extern crate serde_json;
 
 pub mod db;
 pub mod hipchat;
