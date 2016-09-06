@@ -13,7 +13,9 @@ pub mod hipchat;
 use hipchat::RoomItem;
 
 fn main() {
+    // let conn = db::open_db();
     // let rooms: Vec<RoomItem> = hipchat::get_rooms();
-    // db::update_rooms(rooms);
-    hipchat::get_messages_for_room(2);
+    // db::update_rooms(&conn, rooms);
+    hipchat::get_messages_for_room(11);
+
 }
