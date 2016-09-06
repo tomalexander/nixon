@@ -1,6 +1,6 @@
 [package]
 authors = ["Tom Alexander <craftkiller@gmail.com>"]
-name = "stasi"
+name = "nixon"
 version = "0.1.0"
 
 [dependencies]
