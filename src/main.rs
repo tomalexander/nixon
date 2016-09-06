@@ -13,9 +13,17 @@ pub mod hipchat;
 use hipchat::RoomItem;
 
 fn main() {
-    // let conn = db::open_db();
-    // let rooms: Vec<RoomItem> = hipchat::get_rooms();
-    // db::update_rooms(&conn, rooms);
-    hipchat::get_messages_for_room(11);
-
+    {
+        let conn = db::open_db();
+        let rooms: Vec<RoomItem> = hipchat::get_rooms();
+        db::update_rooms(&conn, rooms);
+    }
+    {
+        let conn = db::open_db();
+        for id in db::get_all_room_ids(&conn) {
+            println!("Starting room {}", id);
+            hipchat::get_messages_for_room(id);
+        }
+    }
+    println!("Finished!");
 }

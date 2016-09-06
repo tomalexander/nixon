@@ -1,6 +1,7 @@
 use hyper;
 use hyper::client::Client;
 use hyper::header::Authorization;
+use hyper::client::response::Response;
 use std::io::Read;
 use std::collections::BTreeMap;
 use time;
@@ -60,7 +61,7 @@ pub fn get_rooms() -> Vec<RoomItem> {
         .clear()
         .append_pair("include-archived", "true")
         .append_pair("include-private", "false")
-        .append_pair("max-results", "1000")
+        .append_pair("max-results", "999")
         ;
     
     let mut room_address: String = url.as_str().to_owned();
@@ -69,6 +70,9 @@ pub fn get_rooms() -> Vec<RoomItem> {
         let mut res = client.get(&room_address)
             .header(Authorization(auth.clone()))
             .send().unwrap();
+        if maybe_rate_limited(&res) {
+            continue;
+        }
         assert_eq!(res.status, hyper::Ok);
         let mut content = String::new();
         let size_read = res.read_to_string(&mut content);
@@ -97,6 +101,22 @@ fn unix_to_8061(seconds: i64) -> String {
     format!("{}+00:00", without_timezone)
 }
 
+fn maybe_rate_limited(res: &Response) -> bool {
+    match res.status {
+        hyper::Ok => false,
+        hyper::status::StatusCode::TooManyRequests => {
+            println!("Hitting rate limit, sleeping for 6 minutes");
+            let five_minutes = Duration::from_secs(6 * 60);
+            thread::sleep(five_minutes);
+            true
+        },
+        _ => {
+            panic!("Unknown status code {}", res.status);
+        }
+    }
+        
+}
+
 pub fn get_messages_for_room(id: i32) {
     let mut conn: Connection = db::open_db();
     let api_key: String = db::get_db_property(&conn, "api_key").expect("DB Missing api_key");
@@ -113,7 +133,7 @@ pub fn get_messages_for_room(id: i32) {
         .append_pair("reverse", "false")
         .append_pair("timezone", "UTC")
         .append_pair("date", &now_string)
-        .append_pair("max-results", "500") // For some reason, 1000 breaks paging
+        .append_pair("max-results", "999") // For some reason, 1000 breaks paging
         ;
     
     let mut room_address: String = url.as_str().to_owned();
@@ -129,17 +149,8 @@ pub fn get_messages_for_room(id: i32) {
         let mut res = client.get(&room_address)
             .header(Authorization(auth.clone()))
             .send().unwrap();
-        match res.status {
-            hyper::Ok => (),
-            hyper::status::StatusCode::TooManyRequests => {
-                println!("Hitting rate limit, sleeping for 6 minutes");
-                let five_minutes = Duration::from_secs(6 * 60);
-                thread::sleep(five_minutes);
-                continue;
-            },
-            _ => {
-                panic!("Unknown status code {}", res.status);
-            }
+        if maybe_rate_limited(&res) {
+            continue;
         }
         assert_eq!(res.status, hyper::Ok);
         let mut content = String::new();

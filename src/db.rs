@@ -17,7 +17,6 @@ pub fn open_db() -> Connection {
 
 pub fn get_db_property(conn: &Connection, name: &str) -> Option<String>
 {
-    let conn = open_db();
     let mut stmt = conn.prepare("SELECT name, value FROM props WHERE name=$1").unwrap();
     let mut props = stmt.query_map(&[&name], |row| {
         DbProperty {
@@ -33,8 +32,6 @@ pub fn get_db_property(conn: &Connection, name: &str) -> Option<String>
 }
 
 pub fn update_rooms(conn: &Connection, rooms: Vec<RoomItem>) {
-    let conn = open_db();
-
     let mut stmt = conn.prepare("INSERT OR REPLACE INTO rooms (id, is_archived, name, privacy, version) VALUES($1, $2, $3, $4, $5);").unwrap();
     for room in rooms {
         stmt.execute(&[&room.id,
@@ -107,4 +104,15 @@ pub fn get_most_recent_timestamp_for_room(conn: &Connection, room_id: i32) -> i6
         },
         None => 0
     }
+}
+
+pub fn get_all_room_ids(conn: &Connection) -> Vec<i32> {
+    let mut stmt = conn.prepare("SELECT id FROM rooms;").unwrap();
+    let mut ids = stmt.query_map(&[], |row| {
+        let res: i32 = row.get(0);
+        res
+    }).unwrap();
+
+    let ret: Vec<i32> = ids.map(|id| id.unwrap()).collect();
+    ret
 }
