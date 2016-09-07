@@ -44,7 +44,7 @@ pub struct ChatMessage {
     pub date: String,
     pub from: serde_json::Value,
     pub id: String,
-    pub message: String,
+    pub message: Option<String>,
     pub message_format: Option<String>,
 }
 
@@ -127,13 +127,14 @@ pub fn get_messages_for_room(id: i32) {
     let mut url = hyper::Url::parse(&format!("https://{}/v2/room/{}/history", server, id)).unwrap();
     let now = time::get_time();
     let now_string: String = unix_to_8061(now.sec);
+    let date_in_room: i64 = db::get_most_recent_timestamp_for_room(&conn, id);
     
     url.query_pairs_mut()
         .clear()
         .append_pair("reverse", "false")
         .append_pair("timezone", "UTC")
         .append_pair("date", &now_string)
-        .append_pair("max-results", "999") // For some reason, 1000 breaks paging
+        .append_pair("max-results", if date_in_room > 0 { "100" } else { "999"} ) // For some reason, 1000 breaks paging
         ;
     
     let mut room_address: String = url.as_str().to_owned();

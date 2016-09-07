@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS messages (
        color TEXT,
        date INTEGER NOT NULL,
        sender TEXT NOT NULL,
-       message TEXT NOT NULL,
+       message TEXT,
        message_format TEXT
 );
 
