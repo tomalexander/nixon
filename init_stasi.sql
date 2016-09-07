@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS props (
        name TEXT NOT NULL,
        value TEXT NOT NULL
 );
+CREATE UNIQUE INDEX idx_props_name ON props (name);
 
 INSERT INTO props (name, value) VALUES ('api_key', 'yoUrApIkEyHerE');
 INSERT INTO props (name, value) VALUES ('server', 'your.hipchat.server.com');
@@ -27,5 +28,6 @@ CREATE TABLE IF NOT EXISTS messages (
        message TEXT,
        message_format TEXT
 );
+CREATE UNIQUE INDEX idx_messages_id ON messages (id);
 
 END TRANSACTION;
