@@ -176,7 +176,9 @@ pub fn get_messages_for_room(id: i32) {
             break;
         } else {
             room_address = next.unwrap().to_owned();
-            println!("Advancing to {}", room_address);
+            if ! db_already_has_message {
+                println!("Advancing to {}", room_address);
+            }
         }
     }
     // At this point the entire history for the room should be in the
