@@ -8,21 +8,21 @@ extern crate serde;
 extern crate serde_json;
 
 pub mod db;
-pub mod hipchat;
+pub mod hipchat_old;
 
-use hipchat::RoomItem;
+use hipchat_old::RoomItem;
 
 fn main() {
     {
         let conn = db::open_db();
-        let rooms: Vec<RoomItem> = hipchat::get_rooms();
+        let rooms: Vec<RoomItem> = hipchat_old::get_rooms();
         db::update_rooms(&conn, rooms);
     }
     {
         let conn = db::open_db();
         for id in db::get_all_room_ids(&conn) {
             println!("Starting room {}", id);
-            hipchat::get_messages_for_room(id);
+            hipchat_old::get_messages_for_room(id);
         }
     }
     println!("Finished!");
