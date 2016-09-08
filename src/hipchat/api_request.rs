@@ -91,7 +91,9 @@ impl ApiRequest {
     fn update_limits_from_response(&mut self, response: &Response) {
         match response.headers.get::<XRatelimitReset>() {
             Some(&XRatelimitReset(timestamp)) => {
-                self.request_limit_reset = timestamp;
+                if timestamp > time::get_time().sec as u64 {
+                    self.request_limit_reset = timestamp;
+                }
             },
             None => (),
         }
@@ -112,6 +114,7 @@ impl ApiRequest {
                     match res.status {
                         hyper::status::StatusCode::TooManyRequests => {
                             println!("Too many requests returned, should hit sleep for rate limit next");
+                            self.request_limit_remaining = 0;
                             // Loop again so it will hit the sleep
                             // before firing next request since we
                             // already updated the limits
