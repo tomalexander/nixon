@@ -162,7 +162,9 @@ pub fn get_messages_for_room(id: i32) {
     let api_key: String = db::get_db_property(&conn, "api_key").expect("DB Missing api_key");
     let server:  String = db::get_db_property(&conn, "server").expect("DB Missing server");
     let auth = format!("Bearer {}", api_key);
-    let client = Client::new();
+    let mut client = Client::new();
+    client.set_read_timeout(Some(Duration::from_secs(30)));
+    client.set_write_timeout(Some(Duration::from_secs(30)));
 
     let mut url = hyper::Url::parse(&format!("https://{}/v2/room/{}/history", server, id)).unwrap();
     let now = time::get_time();
@@ -185,17 +187,33 @@ pub fn get_messages_for_room(id: i32) {
     // sure we don't get a partial insert since we will stop paging
     // once we hit a message already in the DB
     let tx: Transaction = conn.transaction().unwrap();
+    // Keep track of the number of times we retry the URL so we can panic if we're stuck
+    let mut reattempts: u8 = 0;
 
     while !db_already_has_message {
+        if reattempts > 5 {
+            panic!("Re-attempts exceeds 5, halting");
+        }
         let mut res = maybe_retry_send(&client, &room_address, &auth);
         if maybe_rate_limited(&res) {
+            reattempts += 1;
             continue;
         }
         assert_eq!(res.status, hyper::Ok);
         let mut content = String::new();
         let size_read = res.read_to_string(&mut content);
 
-        let decoded: ChatResponse = serde_json::from_str(&content).unwrap();
+        let decoded: ChatResponse = match serde_json::from_str(&content) {
+            Ok(dec) => dec,
+            Err(e) => {
+                println!("Error decoding json. Error: {:?}.\n{}", e, content);
+                reattempts += 1;
+                continue;
+            }
+        };
+
+        // We've successsfully parsed the json, safe to set reattempts back to 0
+        reattempts = 0;
 
         for msg in decoded.items {
             if db::add_message(&tx, &msg, id) {
