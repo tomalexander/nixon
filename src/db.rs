@@ -3,7 +3,7 @@ use std::path::Path;
 use time;
 use serde_json;
 
-use hipchat_old::{RoomItem, ChatMessage};
+use hipchat::{RoomItem, ChatMessage};
 
 #[derive(Debug, Clone)]
 struct DbProperty {

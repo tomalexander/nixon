@@ -75,7 +75,8 @@ impl ApiRequest {
     }
 
     fn sleep_if_at_limit(&self) {
-        if self.request_limit_remaining == 0 {
+        //println!("Checking sleep: {} | {} | {}", self.request_limit_remaining, self.request_limit_reset, time::get_time().sec);
+        if self.request_limit_remaining <= 1 { // HipChat's API lies and tells you that you have 1 request remaining when you don't.
             let now = time::get_time().sec as u64;
             if now > self.request_limit_reset {
                 // Time has already elapsed
@@ -101,7 +102,6 @@ impl ApiRequest {
             },
             None => (),
         }
-        println!("New Limits: {} ::: {}", self.request_limit_remaining, self.request_limit_reset);
     }
 
     fn request_check_rate_limit_response(&mut self, controller: &Controller) -> Result<Response, String> {
@@ -111,6 +111,7 @@ impl ApiRequest {
                     self.update_limits_from_response(&res);
                     match res.status {
                         hyper::status::StatusCode::TooManyRequests => {
+                            println!("Too many requests returned, should hit sleep for rate limit next");
                             // Loop again so it will hit the sleep
                             // before firing next request since we
                             // already updated the limits
