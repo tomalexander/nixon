@@ -48,6 +48,41 @@ pub struct ChatMessage {
     pub message_format: Option<String>,
 }
 
+header! { (XRatelimitReset, "X-Ratelimit-Reset") => [String] }
+
+fn get_seconds_until_rate_limit_reset(res: &Response) -> i64 {
+    let now = time::get_time();
+    let time_it_resets: i64 = {
+        let rate_limit_reset: Option<&XRatelimitReset> = res.headers.get();
+        let future_time = rate_limit_reset
+            .map(|reset| reset.to_string())
+            .map(|reset| reset.parse::<i64>().expect("failed to parse X-Ratelimit-Reset option to int"))
+            .unwrap_or(now.sec + (6 * 60))
+            ;
+        future_time
+    };
+    time_it_resets
+}
+
+fn maybe_rate_limited(res: &Response) -> bool {
+    get_seconds_until_rate_limit_reset(res);
+    match res.status {
+        hyper::Ok => false,
+        hyper::status::StatusCode::TooManyRequests => {
+            let now = time::get_time();
+            let time_to_sleep_until = get_seconds_until_rate_limit_reset(res);
+            let seconds_to_wait = time_to_sleep_until - now.sec + 30; // Add 30 seconds in case clocks are off
+            println!("Hitting rate limit, sleeping for {} seconds", seconds_to_wait);
+            thread::sleep(Duration::from_secs(seconds_to_wait as u64));
+            true
+        },
+        _ => {
+            panic!("Unknown status code {}", res.status);
+        }
+    }
+        
+}
+
 pub fn get_rooms() -> Vec<RoomItem> {
     let conn: Connection = db::open_db();
     let mut ret: Vec<RoomItem> = Vec::with_capacity(3000);
@@ -99,22 +134,6 @@ fn unix_to_8061(seconds: i64) -> String {
     let now_time = time::at_utc(now);
     let without_timezone: String = time::strftime("%Y-%m-%dT%H:%M:%S", &now_time).unwrap();
     format!("{}+00:00", without_timezone)
-}
-
-fn maybe_rate_limited(res: &Response) -> bool {
-    match res.status {
-        hyper::Ok => false,
-        hyper::status::StatusCode::TooManyRequests => {
-            println!("Hitting rate limit, sleeping for 6 minutes");
-            let five_minutes = Duration::from_secs(6 * 60);
-            thread::sleep(five_minutes);
-            true
-        },
-        _ => {
-            panic!("Unknown status code {}", res.status);
-        }
-    }
-        
 }
 
 pub fn get_messages_for_room(id: i32) {
