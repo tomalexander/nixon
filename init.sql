@@ -19,15 +19,14 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 CREATE TABLE IF NOT EXISTS messages (
-       message_id INTEGER PRIMARY KEY AUTOINCREMENT, -- Private to DB
+       id TEXT NOT NULL PRIMARY KEY,
        room_id INTEGER NOT NULL,
-       id TEXT NOT NULL,
        color TEXT,
        date INTEGER NOT NULL,
        sender TEXT NOT NULL,
        message TEXT,
        message_format TEXT
 );
-CREATE UNIQUE INDEX idx_messages_id ON messages (id);
+CREATE INDEX idx_messages_room_id ON messages (room_id);
 
 END TRANSACTION;

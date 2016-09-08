@@ -2,6 +2,7 @@ use hyper;
 use hyper::client::Client;
 use hyper::header::Authorization;
 use hyper::client::response::Response;
+use hyper::client::RequestBuilder;
 use std::io::Read;
 use std::collections::BTreeMap;
 use time;
@@ -9,6 +10,8 @@ use serde_json;
 use std::thread;
 use std::time::Duration;
 use rusqlite::{Connection, Transaction};
+use std::io;
+use std::cmp;
 
 use db;
 
@@ -71,7 +74,7 @@ fn maybe_rate_limited(res: &Response) -> bool {
         hyper::status::StatusCode::TooManyRequests => {
             let now = time::get_time();
             let time_to_sleep_until = get_seconds_until_rate_limit_reset(res);
-            let seconds_to_wait = time_to_sleep_until - now.sec + 30; // Add 30 seconds in case clocks are off
+            let seconds_to_wait = cmp::max(time_to_sleep_until - now.sec + 30, 10); // Add 30 seconds in case clocks are off
             println!("Hitting rate limit, sleeping for {} seconds", seconds_to_wait);
             thread::sleep(Duration::from_secs(seconds_to_wait as u64));
             true
@@ -102,9 +105,7 @@ pub fn get_rooms() -> Vec<RoomItem> {
     let mut room_address: String = url.as_str().to_owned();
     
     loop {
-        let mut res = client.get(&room_address)
-            .header(Authorization(auth.clone()))
-            .send().unwrap();
+        let mut res = maybe_retry_send(&client, &room_address, &auth);
         if maybe_rate_limited(&res) {
             continue;
         }
@@ -134,6 +135,26 @@ fn unix_to_8061(seconds: i64) -> String {
     let now_time = time::at_utc(now);
     let without_timezone: String = time::strftime("%Y-%m-%dT%H:%M:%S", &now_time).unwrap();
     format!("{}+00:00", without_timezone)
+}
+
+fn maybe_retry_send(client: &Client, url: &str, auth: &str) -> Response {
+    for i in 0..5 {
+        match client.get(url)
+            .header(Authorization(auth.to_owned()))
+            .send() {
+                Ok(res) => return res,
+                Err(hyper::error::Error::Io(e)) => {
+                    if e.kind() == io::ErrorKind::ConnectionAborted {
+                        println!("Connection Aborted, retrying attempt {}", i+1);
+                    }
+                    continue;
+                },
+                Err(e) => {
+                    println!("Unknown error {:?}", e);
+                }
+            };
+    }
+    panic!("Tried 5 times to connect unsuccessfully");
 }
 
 pub fn get_messages_for_room(id: i32) {
@@ -166,9 +187,7 @@ pub fn get_messages_for_room(id: i32) {
     let tx: Transaction = conn.transaction().unwrap();
 
     while !db_already_has_message {
-        let mut res = client.get(&room_address)
-            .header(Authorization(auth.clone()))
-            .send().unwrap();
+        let mut res = maybe_retry_send(&client, &room_address, &auth);
         if maybe_rate_limited(&res) {
             continue;
         }
