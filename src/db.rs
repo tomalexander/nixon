@@ -1,7 +1,7 @@
 use rusqlite::{Connection, SqliteConnection};
 use std::path::Path;
-use time;
 use serde_json;
+use chrono::DateTime;
 
 use hipchat::{RoomItem, ChatMessage};
 
@@ -56,8 +56,9 @@ fn has_message(id: &str, conn: &Connection) -> bool {
 }
 
 fn message_date_to_unix(inp: &str) -> i64 {
-    let tm = time::strptime(&inp, "%Y-%m-%dT%H:%M:%S").unwrap();
-    tm.to_timespec().sec
+    let tm = DateTime::parse_from_str(inp, "%+").unwrap(); // ISO 8061
+    let ret: i64 = tm.timestamp() * 1000 + (tm.timestamp_subsec_millis() as i64);
+    ret
 }
 
 fn message_from_to_string(inp: &serde_json::Value) -> String {

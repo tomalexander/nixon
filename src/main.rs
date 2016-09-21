@@ -3,7 +3,7 @@
 
 #[macro_use] extern crate hyper;
 extern crate rusqlite;
-extern crate time;
+extern crate chrono;
 extern crate serde;
 extern crate serde_json;
 

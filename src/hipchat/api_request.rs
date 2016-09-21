@@ -4,7 +4,7 @@ use std::result::Result;
 use hyper::client::Response;
 use hyper;
 use std::{self, io, cmp, thread};
-use time;
+use chrono::{DateTime, UTC};
 
 header! { (XRatelimitReset, "X-Ratelimit-Reset") => [u64] }
 header! { (XRatelimitRemaining, "X-RateLimit-Remaining") => [u16] }
@@ -75,9 +75,8 @@ impl ApiRequest {
     }
 
     fn sleep_if_at_limit(&self) {
-        //println!("Checking sleep: {} | {} | {}", self.request_limit_remaining, self.request_limit_reset, time::get_time().sec);
         if self.request_limit_remaining <= 1 { // HipChat's API lies and tells you that you have 1 request remaining when you don't.
-            let now = time::get_time().sec as u64;
+            let now: u64 = UTC::now().timestamp() as u64;
             if now > self.request_limit_reset {
                 // Time has already elapsed
                 return;
@@ -90,8 +89,9 @@ impl ApiRequest {
 
     fn update_limits_from_response(&mut self, response: &Response) {
         match response.headers.get::<XRatelimitReset>() {
-            Some(&XRatelimitReset(timestamp)) => {
-                if timestamp > time::get_time().sec as u64 {
+            Some(&XRatelimitReset(timestamp)) => { // in seconds
+                let now: DateTime<UTC> = UTC::now();
+                if timestamp > now.timestamp() as u64 {
                     self.request_limit_reset = timestamp;
                 }
             },

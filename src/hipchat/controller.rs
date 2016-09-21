@@ -5,8 +5,8 @@ use super::{ChatMessage, ChatResponse, RoomItem, RoomResponse};
 use super::{ApiRequest, ApiResponse};
 use serde_json;
 use rusqlite::{Connection, Transaction};
-use time;
 use db;
+use chrono::{UTC, DateTime};
 
 pub struct Controller {
     pub auth: String,
@@ -60,7 +60,7 @@ impl Controller {
     pub fn get_messages_for_room(&self, id: i32) {
         let mut conn: Connection = db::open_db();
         let mut url = hyper::Url::parse(&format!("https://{}/v2/room/{}/history", self.server, id)).unwrap();
-        let now_string: String = unix_to_8061(time::get_time().sec);
+        let now_string: String = time_to_8061(UTC::now());
         let date_in_room: i64 = db::get_most_recent_timestamp_for_room(&conn, id);
 
         url.query_pairs_mut()
@@ -121,12 +121,6 @@ impl Controller {
     }
 }
 
-fn unix_to_8061(seconds: i64) -> String {
-    let now = time::Timespec {
-        sec: seconds,
-        nsec: 0
-    };
-    let now_time = time::at_utc(now);
-    let without_timezone: String = time::strftime("%Y-%m-%dT%H:%M:%S", &now_time).unwrap();
-    format!("{}+00:00", without_timezone)
+fn time_to_8061(time: DateTime<UTC>) -> String {
+    time.format("%Y-%m-%dT%H:%M:%S+00:00").to_string().to_owned()
 }
