@@ -75,7 +75,7 @@ impl Controller {
         let mut req: ApiRequest = ApiRequest::new(room_address);
         let mut db_already_has_message: bool = false;
         let mut num_added: u64 = 0;
-        
+
         // Hipchat starts listing messages from the most recent with
         // paging going backwards so we need to do a transaction to
         // make sure we don't get a partial insert since we will stop
@@ -87,7 +87,7 @@ impl Controller {
                 let res: ApiResponse = match req.send(&self) {
                     Ok(resp) => resp,
                     Err(msg) => {
-                        if msg == "Unknown status code 404 Not Found" {
+                        if msg == "Unknown status code 404 Not Found" || msg == "Unknown status code 403 Forbidden" {
                             break;
                         } else {
                             panic!("{}", msg)
