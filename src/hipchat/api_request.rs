@@ -138,9 +138,15 @@ impl ApiRequest {
         Err("Ran out of retry attempts".to_owned())
     }
 
-    pub fn send(mut self, controller: &Controller) -> ApiResponse {
-        let response = self.request_check_rate_limit_response(controller).unwrap();
-        assert_eq!(response.status, hyper::Ok);
-        ApiResponse::new(self, response)
+    pub fn send(mut self, controller: &Controller) -> Result<ApiResponse, String> {
+        match self.request_check_rate_limit_response(controller) {
+            Ok(response) => {
+                assert_eq!(response.status, hyper::Ok);
+                Ok(ApiResponse::new(self, response))
+            },
+            Err(msg) => {
+                Err(msg)
+            }
+        }
     }
 }

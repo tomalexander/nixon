@@ -39,7 +39,7 @@ impl Controller {
         let mut req: ApiRequest = ApiRequest::new(room_address);
         loop {
             req = {
-                let res: ApiResponse = req.send(&self);
+                let res: ApiResponse = req.send(&self).unwrap();
 
                 // Actually handle response here
                 let decoded: RoomResponse = serde_json::from_str(res.get_content()).unwrap();
@@ -84,7 +84,16 @@ impl Controller {
 
         while !db_already_has_message {
             req = {
-                let res: ApiResponse = req.send(&self);
+                let res: ApiResponse = match req.send(&self) {
+                    Ok(resp) => resp,
+                    Err(msg) => {
+                        if msg == "Unknown status code 404 Not Found" {
+                            break;
+                        } else {
+                            panic!("{}", msg)
+                        }
+                    }
+                };
 
                 // Actually handle the response here
                 let decoded: ChatResponse = match serde_json::from_str(res.get_content()) {
